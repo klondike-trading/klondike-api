@@ -1,0 +1,464 @@
+openapi: 3.1.0
+info:
+  title: Klondike Market Data API
+  version: 0.1.0
+  summary: Real-time crypto market data consolidated across venues.
+  description: |
+    Trades and merged order books of the pairs Klondike streams from about forty
+    centralized venues, and the overview of the market: what an order really
+    costs on the merged book, what aggregation saves against the best single
+    venue, dislocations between venues, implied prices.
+
+    * **Authentication**: every `/v1` endpoint takes an API key, in the
+      `X-API-Key` header (or `Authorization: Bearer <key>`). Keys are created on
+      the [portal](https://api.klondike-crypto.com/portal/) after signing in.
+    * **Real time**: `GET /v1/ws` streams the same data over a WebSocket, as
+      JSON or Cap'n Proto frames (see the WebSocket documentation).
+    * **Symbols** are unified CCXT symbols: `BTC/USDT` (spot),
+      `BTC/USDT:USDT` (linear perpetual), `BTC/USD:BTC` (inverse perpetual).
+      **Venues** are CCXT exchange ids (`binance`, `binanceusdm`, `krakenfutures`...).
+    * **Timestamps** are milliseconds since the Unix epoch (UTC). Prices are in
+      the quote currency, quantities in the base currency (in USD for inverse
+      perpetuals, as on the venues).
+  license:
+    name: MIT
+    identifier: MIT
+  contact:
+    name: Klondike
+    url: https://klondike-trading.github.io/klondike-api/
+
+servers:
+  - url: https://api.klondike-crypto.com
+    description: Production
+
+security:
+  - apiKey: []
+  - bearer: []
+
+tags:
+  - name: Market data
+  - name: Overview
+
+paths:
+  /v1/symbols:
+    get:
+      tags: [Market data]
+      operationId: listSymbols
+      summary: Symbols with recent trades
+      description: |
+        The symbols the API received trades for in the last minutes, with the
+        venues they traded on. Pairs streamed on demand only appear once
+        someone subscribed to them.
+      parameters:
+        - name: q
+          in: query
+          description: Case insensitive substring of the symbol (`btc`, `/usdc`).
+          schema: { type: string }
+      responses:
+        "200":
+          description: Symbols, sorted by symbol.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [symbols]
+                properties:
+                  symbols:
+                    type: array
+                    items: { $ref: "#/components/schemas/SymbolInfo" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/trades:
+    get:
+      tags: [Market data]
+      operationId: getTrades
+      summary: Recent trades of a symbol, all venues
+      description: |
+        The last trades of the symbol on every venue, oldest first. The API
+        keeps the last 1,000 trades of each symbol in memory: this is not a
+        history endpoint, stream `trades` over the WebSocket to get them all.
+      parameters:
+        - $ref: "#/components/parameters/Symbol"
+        - name: limit
+          in: query
+          description: Number of trades, the most recent ones.
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+        - name: since
+          in: query
+          description: Only trades strictly after this timestamp (ms).
+          schema: { type: integer, format: int64 }
+        - $ref: "#/components/parameters/Venues"
+      responses:
+        "200":
+          description: Trades, oldest first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Trades" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/orderbook:
+    get:
+      tags: [Market data]
+      operationId: getOrderbook
+      summary: Merged order book of a symbol
+      description: |
+        The order books of every venue merged into one: the best bid and ask of
+        each venue and the first `depth` levels of each side, every level with
+        its venue. Prices are not netted of fees.
+
+        The first request for a symbol nobody follows can take up to two
+        seconds (the merger publishes it on demand); a symbol no venue streams
+        gives a 404.
+      parameters:
+        - $ref: "#/components/parameters/Symbol"
+        - name: depth
+          in: query
+          description: Levels per side.
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 50 }
+        - $ref: "#/components/parameters/Venues"
+      responses:
+        "200":
+          description: The merged book.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Orderbook" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /v1/overview:
+    get:
+      tags: [Overview]
+      operationId: getOverview
+      summary: Market overview
+      description: |
+        The pairs Klondike follows permanently, with for each one the cost of
+        market orders of 100 k$, 1 M$ and 10 M$ on the merged book and on the
+        best single venue (taker fees included), the depth within ±10 bps, the
+        crosses between venues net of fees and the basis of perpetuals; the
+        venues setting the best price, stablecoin pegs, implied FX rates,
+        triangles and conversion paths. Refreshed every few seconds.
+
+        Supports `If-None-Match`: a 304 is returned while the overview has not
+        changed.
+      parameters:
+        - name: If-None-Match
+          in: header
+          schema: { type: string }
+      responses:
+        "200":
+          description: The overview.
+          headers:
+            ETag: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Overview" }
+        "304": { description: Not modified. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503":
+          description: No overview received yet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /v1/ws:
+    get:
+      tags: [Market data]
+      operationId: stream
+      summary: WebSocket stream
+      description: |
+        Upgrades to a WebSocket streaming trades, merged order books and the
+        overview. The API key goes in the `X-API-Key` header, or in the
+        `api_key` query parameter for clients that cannot set headers
+        (browsers). See the WebSocket documentation for the messages.
+      parameters:
+        - name: format
+          in: query
+          description: Encoding of the server messages.
+          schema: { type: string, enum: [json, capnp], default: json }
+        - name: api_key
+          in: query
+          schema: { type: string }
+      responses:
+        "101": { description: Switching protocols. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    bearer:
+      type: http
+      scheme: bearer
+      description: The API key as a bearer token.
+
+  parameters:
+    Symbol:
+      name: symbol
+      in: query
+      required: true
+      description: Unified CCXT symbol.
+      schema: { type: string, examples: ["BTC/USDT", "ETH/USDT:USDT"] }
+    Venues:
+      name: venues
+      in: query
+      description: Comma separated CCXT exchange ids; all venues when absent.
+      schema: { type: string, examples: ["binance,okx,coinbase"] }
+
+  responses:
+    BadRequest:
+      description: Invalid parameter.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing, unknown or revoked API key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No data for this symbol.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limit of the key exceeded.
+      headers:
+        Retry-After:
+          description: Seconds to wait.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        code:
+          type: string
+          description: bad_request, unauthorized, not_found, rate_limited, unavailable...
+        error: { type: string, description: Human readable message. }
+
+    SymbolInfo:
+      type: object
+      required: [symbol, market, venues, lastTradeTs]
+      properties:
+        symbol: { type: string }
+        market: { type: string, enum: [spot, perp] }
+        venues:
+          type: array
+          items: { type: string }
+        lastTradeTs: { type: integer, format: int64 }
+
+    Side:
+      type: string
+      enum: [buy, sell, unknown]
+      description: Aggressor (taker) side.
+
+    Trade:
+      type: object
+      required: [ts, venue, price, qty, side]
+      properties:
+        ts: { type: integer, format: int64, description: Exchange time, receive time when the venue gives none. }
+        venue: { type: string }
+        price: { type: number }
+        qty: { type: number }
+        side: { $ref: "#/components/schemas/Side" }
+
+    Trades:
+      type: object
+      required: [symbol, trades]
+      properties:
+        symbol: { type: string }
+        trades:
+          type: array
+          items: { $ref: "#/components/schemas/Trade" }
+
+    VenueQuote:
+      type: object
+      required: [venue, ts, bid, bidQty, ask, askQty]
+      properties:
+        venue: { type: string }
+        ts: { type: [integer, "null"], format: int64, description: Last update of the venue book. }
+        bid: { type: [number, "null"] }
+        bidQty: { type: [number, "null"] }
+        ask: { type: [number, "null"] }
+        askQty: { type: [number, "null"] }
+
+    Level:
+      type: object
+      required: [price, qty, venue]
+      properties:
+        price: { type: number }
+        qty: { type: number }
+        venue: { type: string }
+
+    Orderbook:
+      type: object
+      required: [symbol, ts, venues, bids, asks]
+      properties:
+        symbol: { type: string }
+        ts: { type: integer, format: int64 }
+        venues:
+          type: array
+          description: Best bid and ask of each venue, on its whole book.
+          items: { $ref: "#/components/schemas/VenueQuote" }
+        bids:
+          type: array
+          description: Best (highest) first.
+          items: { $ref: "#/components/schemas/Level" }
+        asks:
+          type: array
+          description: Best (lowest) first.
+          items: { $ref: "#/components/schemas/Level" }
+
+    Overview:
+      type: object
+      required: [ts, windowsFromTs, feeds, pairs, leaders, implied, paths]
+      properties:
+        ts: { type: integer, format: int64 }
+        windowsFromTs: { type: integer, format: int64, description: Oldest minute of the 1 h counters. }
+        feeds: { $ref: "#/components/schemas/Feeds" }
+        pairs:
+          type: array
+          items: { $ref: "#/components/schemas/Pair" }
+        leaders:
+          type: array
+          description: Share of the time each venue holds the best consolidated bid or ask over 1 h (BTC, ETH, SOL spot), ties split; the shares sum to 1.
+          items: { $ref: "#/components/schemas/Leader" }
+        implied: { $ref: "#/components/schemas/Implied" }
+        paths:
+          type: array
+          items: { $ref: "#/components/schemas/Path" }
+
+    Feeds:
+      type: object
+      required: [venues, venuesKnown, booksLive, lagMsP50]
+      properties:
+        venues: { type: integer, description: Venues with at least one live book. }
+        venuesKnown: { type: integer }
+        booksLive: { type: integer }
+        lagMsP50: { type: number, description: Median latency of the live books, ms. }
+
+    Pair:
+      type: object
+      description: Amounts in USD, costs in bps of the consolidated mid.
+      required: [symbol, base, quote, market, status, exchanges, live, mid, volume1hUsd, volumeTopExchange, volumeTopShare, depth10Usd, imbalance, impact, crosses1h, crossesPositive1h]
+      properties:
+        symbol: { type: string }
+        base: { type: string }
+        quote: { type: string, description: "USDT, USDT:USDT..." }
+        market: { type: string, enum: [spot, perp] }
+        status: { type: string, enum: [ok, warn, alert, down], description: Data quality only. }
+        reasons:
+          type: array
+          items: { type: string }
+          description: "Why the status is not ok: stale:<venue>, not_live:<venue>, cross_stale:<venue>..."
+        exchanges: { type: integer, description: Venues listing the pair. }
+        live: { type: integer, description: Venues with a live book. }
+        mid: { type: number, description: Consolidated mid (consensus mid when the merged book is crossed). }
+        volume1hUsd: { type: number, description: Notional traded over 1 h, measured on the trades received. }
+        volumeTopExchange: { type: string }
+        volumeTopShare: { type: number }
+        depth10Usd: { type: number, description: Bid + ask within ±10 bps of the mid. }
+        depth10PartialShare: { type: [number, "null"], description: "Share of depth10Usd from books stopping before ±10 bps: depth10Usd is then a lower bound." }
+        imbalance: { type: number, description: "(bid − ask) / (bid + ask) within ±50 bps." }
+        impact:
+          type: array
+          items: { $ref: "#/components/schemas/Impact" }
+        crosses1h: { type: integer, description: Crosses between venues over 1 h, transient ones included. }
+        crossesPositive1h: { type: integer, description: Episodes net positive after taker fees. }
+        maxNetBps1h: { type: [number, "null"] }
+        basisBps: { type: [number, "null"], description: "Perpetuals: (mid perp − mid spot) / mid spot." }
+
+    Impact:
+      type: object
+      description: Cost of a market order, taker fees included, on the merged book and on the best single venue. A cost is null when the book cannot fill the order; the filled fraction then says how much it can.
+      required: [notionalUsd, buyFilled, sellFilled, buyVenues, sellVenues, bestSingleBuyExchange, bestSingleSellExchange]
+      properties:
+        notionalUsd: { type: number }
+        buyAllInBps: { type: [number, "null"] }
+        sellAllInBps: { type: [number, "null"] }
+        buyFilled: { type: number }
+        sellFilled: { type: number }
+        buyVenues: { type: integer }
+        sellVenues: { type: integer }
+        bestSingleBuyAllInBps: { type: [number, "null"] }
+        bestSingleSellAllInBps: { type: [number, "null"] }
+        bestSingleBuyExchange: { type: string }
+        bestSingleSellExchange: { type: string }
+
+    Leader:
+      type: object
+      required: [exchange, share]
+      properties:
+        exchange: { type: string }
+        share: { type: number }
+
+    Implied:
+      type: object
+      required: [pegs, fx, triangles]
+      properties:
+        pegs:
+          type: array
+          items: { $ref: "#/components/schemas/Peg" }
+        fx:
+          type: array
+          items: { $ref: "#/components/schemas/ImpliedFX" }
+        triangles:
+          type: array
+          items: { $ref: "#/components/schemas/Triangle" }
+
+    Peg:
+      type: object
+      description: A stablecoin pair, its consolidated mid in bps from 1.
+      required: [symbol, bps, venueSpreadBps, venues]
+      properties:
+        symbol: { type: string }
+        bps: { type: number }
+        venueSpreadBps: { type: number, description: Highest minus lowest venue mid. }
+        venues: { type: integer }
+
+    ImpliedFX:
+      type: object
+      description: "Rate of a fiat currency in USD implied by crypto pairs (median of mid(X/USD) / mid(X/<ccy>)), against the direct pair when there is one."
+      required: [ccy, implied]
+      properties:
+        ccy: { type: string }
+        implied: { type: number }
+        direct: { type: [number, "null"] }
+        devBps: { type: [number, "null"] }
+
+    Triangle:
+      type: object
+      description: Best of the two cycles through a cross pair and USDT, net of the taker fees of its three legs.
+      required: [cross, cycle, bestNetBps]
+      properties:
+        cross: { type: string }
+        cycle: { type: string }
+        bestNetBps: { type: number }
+
+    Path:
+      type: object
+      description: Best conversion path, fees included; costs against the consolidated mid of the direct pair.
+      required: [sell, buy, quantity, tokens, costBps, ts]
+      properties:
+        sell: { type: string }
+        buy: { type: string }
+        quantity: { type: number }
+        tokens:
+          type: array
+          items: { type: string }
+        costBps: { type: number }
+        directCostBps: { type: [number, "null"] }
+        ts: { type: integer, format: int64 }

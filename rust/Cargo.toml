@@ -1,0 +1,30 @@
+[package]
+name = "klondike"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Client of the Klondike market data API: crypto trades, merged order books and market overview over REST and WebSocket"
+repository = "https://github.com/klondike-trading/klondike-api"
+homepage = "https://klondike-trading.github.io/klondike-api/"
+documentation = "https://docs.rs/klondike"
+readme = "README.md"
+keywords = ["crypto", "market-data", "orderbook", "websocket", "trading"]
+categories = ["api-bindings", "finance", "asynchronous"]
+include = ["src/**/*.rs", "schema/klondike_api.capnp", "examples/**/*.rs", "gen.sh", "README.md", "LICENSE"]
+
+# Standalone package: not a member of any workspace of the repository.
+[workspace]
+
+[dependencies]
+capnp = "0.27"
+futures-core = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1.38", features = ["rt", "sync", "time", "macros"] }
+tokio-tungstenite = { version = "0.30", features = ["rustls-tls-webpki-roots"] }
+
+[dev-dependencies]
+tokio = { version = "1.38", features = ["rt-multi-thread", "macros", "net", "time", "signal"] }
+wiremock = "0.6"

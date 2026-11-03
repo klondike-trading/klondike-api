@@ -1,0 +1,9 @@
+# copied by the docs workflow
+docs/openapi.yaml
+site/
+.venv/
+node_modules/
+target/
+__pycache__/
+*.egg-info/
+dist/

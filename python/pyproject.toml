@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "klondike"
+version = "0.1.0"
+description = "Python client of the Klondike market data API: crypto trades, merged order books and market overview over REST and WebSocket."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+authors = [{ name = "Klondike" }]
+keywords = ["crypto", "market data", "order book", "trades", "websocket", "ccxt", "capnproto"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Framework :: AsyncIO",
+  "Topic :: Office/Business :: Financial :: Investment",
+  "Typing :: Typed",
+]
+dependencies = [
+  "httpx>=0.25",
+  "websockets>=13.0",
+]
+
+[project.optional-dependencies]
+capnp = ["pycapnp>=2.0"]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "mypy>=1.10",
+]
+
+[project.urls]
+Homepage = "https://klondike-trading.github.io/klondike-api/"
+Repository = "https://github.com/klondike-trading/klondike-api"
+Portal = "https://api.klondike-crypto.com/portal/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/klondike"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "examples", "README.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+strict = true
+files = ["src/klondike"]
+
+[[tool.mypy.overrides]]
+module = ["capnp", "capnp.*"]
+ignore_missing_imports = true

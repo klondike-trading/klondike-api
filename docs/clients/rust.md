@@ -1,0 +1,1 @@
+--8<-- "rust/README.md"

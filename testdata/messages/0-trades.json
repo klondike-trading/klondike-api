@@ -1,0 +1,1 @@
+{"type":"trades","symbol":"BTC/USDT","trades":[{"ts":1793706479654,"venue":"binance","price":104250.1,"qty":0.0125,"side":"buy"},{"ts":1793706479702,"venue":"okx","price":104249.9,"qty":0.4,"side":"sell"},{"ts":1793706479800,"venue":"kraken","price":104250,"qty":1,"side":"unknown"}]}

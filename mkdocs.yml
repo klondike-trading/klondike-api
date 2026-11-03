@@ -1,0 +1,60 @@
+site_name: Klondike Market Data API
+site_url: https://klondike-trading.github.io/klondike-api/
+site_description: Real-time crypto trades, merged order books and market overview across forty venues, over REST and WebSocket.
+repo_url: https://github.com/klondike-trading/klondike-api
+repo_name: klondike-trading/klondike-api
+edit_uri: edit/main/docs/
+copyright: Klondike
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - content.tabs.link
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: blue
+      toggle: { icon: material/weather-night, name: Dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: blue
+      toggle: { icon: material/weather-sunny, name: Light mode }
+
+nav:
+  - Overview: index.md
+  - Authentication: authentication.md
+  - REST endpoints: rest.md
+  - WebSocket streams: websocket.md
+  - Cap'n Proto schema: capnp.md
+  - OpenAPI reference: reference.md
+  - Client libraries:
+      - Python: clients/python.md
+      - JavaScript: clients/javascript.md
+      - Go: clients/go.md
+      - Rust: clients/rust.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      # the client READMEs and the schema are included from the repository
+      base_path: ["."]
+      check_paths: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/klondike-trading/klondike-api
