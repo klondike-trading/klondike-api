@@ -10,7 +10,7 @@ WebSocket.
 * sync and async REST clients (`httpx`),
 * reconnecting WebSocket streams (`websockets`), JSON or Cap'n Proto frames
   decoded to the same objects,
-* typed dataclasses, Python 3.9 and later.
+* typed dataclasses, Python 3.10 and later.
 
 ## Install
 
