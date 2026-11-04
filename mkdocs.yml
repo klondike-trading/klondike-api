@@ -38,6 +38,8 @@ nav:
       - JavaScript: clients/javascript.md
       - Go: clients/go.md
       - Rust: clients/rust.md
+      - C#: clients/csharp.md
+  - Excel add-in: clients/excel.md
 
 markdown_extensions:
   - admonition

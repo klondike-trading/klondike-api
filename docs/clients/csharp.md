@@ -1,0 +1,1 @@
+--8<-- "csharp/README.md"

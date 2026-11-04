@@ -15,7 +15,8 @@ Real-time crypto market data consolidated across about forty centralized venues
 Snapshots over REST, streams over WebSocket in JSON or
 [Cap'n Proto](capnp.md), with client libraries for
 [Python](clients/python.md), [JavaScript](clients/javascript.md),
-[Go](clients/go.md) and [Rust](clients/rust.md).
+[Go](clients/go.md), [Rust](clients/rust.md) and [C#](clients/csharp.md), and an
+[Excel add-in](clients/excel.md) for live data in a worksheet.
 
 ## Quick start
 
@@ -75,6 +76,20 @@ curl -H "X-API-Key: $KLONDIKE_API_KEY" \
     let opts = OrderbookOptions { depth: Some(5), ..Default::default() };
     let book = client.orderbook("BTC/USDT", opts).await?;
     println!("{} {}", book.bids[0].venue, book.bids[0].price);
+    ```
+
+=== "C#"
+
+    ```csharp
+    using var client = new KlondikeClient("kl_...");
+    var book = await client.GetOrderbookAsync("BTC/USDT", new OrderbookOptions { Depth = 5 });
+    Console.WriteLine($"{book.Bids[0].Venue} {book.Bids[0].Price}");
+    ```
+
+=== "Excel"
+
+    ```
+    =KLONDIKE.ORDERBOOK("BTC/USDT",5)
     ```
 
 ## Conventions

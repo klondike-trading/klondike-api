@@ -13,6 +13,8 @@ WebSocket, in JSON or Cap'n Proto.
 | JavaScript / TypeScript | `npm install @klondike-trading/klondike` | [js/](js/) |
 | Go | `go get github.com/klondike-trading/klondike-api/go` | [go/](go/) |
 | Rust | `cargo add klondike` | [rust/](rust/) |
+| C# / .NET | `dotnet add package Klondike` | [csharp/](csharp/) |
+| Excel (Windows) | add-in with live worksheet functions | [csharp/src/Klondike.Excel/](csharp/src/Klondike.Excel/) |
 
 API keys are created on the [portal](https://api.klondike-crypto.com/portal/).
 

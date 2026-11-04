@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Excel add-in (Excel-DNA). Excel on Windows only: an .xll is a native Windows add-in. The build
+    makes bin/<configuration>/net10.0-windows/publish/Klondike-AddIn64-packed.xll, a single file with
+    everything but the .NET runtime.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>Klondike.Excel</RootNamespace>
+    <AssemblyName>Klondike.Excel</AssemblyName>
+    <ExcelAddInName>Klondike</ExcelAddInName>
+    <ExcelAddInFileName>Klondike-AddIn</ExcelAddInFileName>
+    <ExcelDnaCreate32BitAddIn>true</ExcelDnaCreate32BitAddIn>
+    <ExcelDnaCreate64BitAddIn>true</ExcelDnaCreate64BitAddIn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ExcelDna.AddIn" Version="1.9.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
+    <ProjectReference Include="../Klondike.Excel.Core/Klondike.Excel.Core.csproj" />
+  </ItemGroup>
+</Project>

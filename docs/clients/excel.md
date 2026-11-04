@@ -1,0 +1,1 @@
+--8<-- "csharp/src/Klondike.Excel/README.md"
