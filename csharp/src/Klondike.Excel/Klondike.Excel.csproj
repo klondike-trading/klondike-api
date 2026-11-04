@@ -17,7 +17,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="ExcelDna.AddIn" Version="1.9.0" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
     <ProjectReference Include="../Klondike.Excel.Core/Klondike.Excel.Core.csproj" />
   </ItemGroup>
 </Project>
