@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     The Excel add-in (Excel-DNA). Excel on Windows only: an .xll is a native Windows add-in. The build
-    makes bin/<configuration>/net10.0-windows/publish/Klondike-AddIn64-packed.xll, a single file with
+    makes bin/<configuration>/<framework>/publish/Klondike-AddIn64-packed.xll, a single file with
     everything but the .NET runtime.
   -->
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- An Excel process hosts a single .NET runtime: the net8.0 add-in loads next to other add-ins on .NET 8. -->
+    <TargetFrameworks>net8.0-windows;net10.0-windows</TargetFrameworks>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Klondike.Excel</RootNamespace>

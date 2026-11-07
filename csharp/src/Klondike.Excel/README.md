@@ -19,6 +19,10 @@ can load.
 2. Get `Klondike-AddIn64-packed.xll`, or `Klondike-AddIn-packed.xll` for a 32-bit Excel, from the
    `excel-addin` artifact of the [CI](https://github.com/klondike-trading/klondike-api/actions/workflows/ci.yml),
    or [build it](#development).
+
+   An Excel process loads a single .NET runtime: if another add-in already loaded .NET 8, Excel says that
+   *.NET Desktop Runtime 10.0.0 is incompatible with the runtime 8.0.x already loaded*. Use then the .NET 8
+   build, artifact `excel-addin-net8`, with the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0).
 3. Windows blocks add-ins downloaded from the internet: right-click the file, *Properties*, tick *Unblock*.
 4. In Excel: *File > Options > Add-ins > Manage: Excel Add-ins > Go > Browse*, and select the file.
 5. In the new **Klondike** tab of the ribbon, click **API key** and paste a key created on the
@@ -95,7 +99,7 @@ dotnet build src/Klondike.Excel -c Release
 ```
 
 makes `src/Klondike.Excel/bin/Release/net10.0-windows/publish/Klondike-AddIn64-packed.xll` and its 32-bit
-twin, on any OS. Loading it requires Excel on Windows. Most of the add-in is `src/Klondike.Excel.Core`, without
+twin, on any OS, and the same under `net8.0-windows`. Loading it requires Excel on Windows. Most of the add-in is `src/Klondike.Excel.Core`, without
 Excel, tested on any OS: subscriptions (`MarketHub`), what each function shows (`CellFeeds`), tables and
 arguments. `src/Klondike.Excel` is what only Excel can run: the [Excel-DNA](https://excel-dna.net/) functions, the ribbon and
 the API key.
