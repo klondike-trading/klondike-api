@@ -151,8 +151,11 @@ public sealed class HubTests : IAsyncLifetime
         }
         var first = await _server.NextConnectionAsync();
         var second = await _server.NextConnectionAsync();
-        var wire = new[] { await first.ReceiveTextAsync(), await first.ReceiveTextAsync(), await second.ReceiveTextAsync(), await second.ReceiveTextAsync() };
-        Assert.Equal(4, wire.Distinct().Count());
+        var onFirst = new[] { await first.ReceiveTextAsync(), await first.ReceiveTextAsync() };
+        var onSecond = new[] { await second.ReceiveTextAsync(), await second.ReceiveTextAsync() };
+        Assert.Equal(4, onFirst.Concat(onSecond).Distinct().Count());
+        // The two connections open together: the server may accept either first.
+        var owner = onFirst.Any(m => m.Contains("\"A/U\"")) ? first : second;
 
         // The fifth has no room: it says so.
         await cells["E/U"].HasAsync(v => v is string s && s.Contains("too many subscriptions"));
@@ -160,11 +163,11 @@ public sealed class HubTests : IAsyncLifetime
 
         // It takes the place of one that goes.
         feeds[0].Dispose();
-        var unsubscribed = await first.ReceiveAsync();
+        var unsubscribed = await owner.ReceiveAsync();
         Assert.Equal("unsubscribe", unsubscribed.GetProperty("op").GetString());
-        var next = await first.ReceiveAsync();
+        var next = await owner.ReceiveAsync();
         Assert.Equal("E/U", next.GetProperty("symbol").GetString());
-        await first.SendTextAsync(Book.Replace("BTC/USDT", "E/U"));
+        await owner.SendTextAsync(Book.Replace("BTC/USDT", "E/U"));
         await cells["E/U"].HasTableAsync();
 
         feeds.ForEach(f => f.Dispose());
